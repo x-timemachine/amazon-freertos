@@ -94,6 +94,9 @@ set(
     "${esp_idf_dir}/components/bootloader_support/include"
     "${esp_idf_dir}/components/esp32/include"
     "${esp_idf_dir}/components/esp_event/include"
+    # This component is required by the ESP32 UART
+    # driver but was missed out here for some reason
+    "${esp_idf_dir}/components/esp_ringbuf/include"
     "${esp_idf_dir}/components/efuse/include"
     "${esp_idf_dir}/components/driver/include"
     "${esp_idf_dir}/components/heap/include"
@@ -240,15 +243,31 @@ else()
 # Secure sockets
 afr_mcu_port(secure_sockets)
 
+# Path to cellular replacement for LWIP
+set(cellular_dir "${AFR_VENDORS_DIR}/../../cellular")
+
+# Source files for cellular replacement for LWIP
 target_sources(
     AFR::secure_sockets::mcu_port
     INTERFACE
-        "${afr_ports_dir}/secure_sockets/lwip/iot_secure_sockets.c"
+        "${cellular_dir}/sock/src/cellular_sock.c"
+        "${cellular_dir}/sock/src/cellular_sock_lwip_itf.c"
+        "${cellular_dir}/ctrl/src/cellular_ctrl.c"
+        "${cellular_dir}/ctrl/src/cellular_ctrl_at.c"
+        "${cellular_dir}/port/clib/cellular_port_clib.c"
+        "${cellular_dir}/port/platform/espressif/src/cellular_port.c"
+        "${cellular_dir}/port/platform/espressif/src/cellular_port_gpio.c"
+        "${cellular_dir}/port/platform/espressif/src/cellular_port_os.c"
+        "${cellular_dir}/port/platform/espressif/src/cellular_port_uart.c"
+        # This file replaces the original Espressif iot_secure_sockets.c
+        "${cellular_dir}/port/platform/espressif/src/afr/iot_secure_sockets.c"
 )
 
+# Include files for cellular replacement for LWIP
 target_include_directories(
     AFR::secure_sockets::mcu_port
     INTERFACE
+        # Existing LWIP include files
         "${esp_idf_dir}/components/lwip/include/apps"
         "${esp_idf_dir}/components/lwip/include/apps/sntp"
         "${esp_idf_dir}/components/lwip/lwip/src/include"
@@ -256,6 +275,20 @@ target_include_directories(
         "${esp_idf_dir}/components/lwip/port/esp32/include"
         "${esp_idf_dir}/components/lwip/port/esp32/include/arch"
         "${esp_idf_dir}/components/lwip/include_compat"
+
+        # Additional cellular include files
+        "${cellular_dir}/cfg"
+        "${cellular_dir}/port/api"
+        "${cellular_dir}/ctrl/api"
+        "${cellular_dir}/sock/api"
+
+        # Private files for cellular replacement for LWIP,
+        # need to figure out how to add private include files
+        "${cellular_dir}/ctrl/src"
+        "${cellular_dir}/sock/src"
+        "${cellular_dir}/port/clib"
+        "${cellular_dir}/port/platform/espressif/src"
+        "${cellular_dir}/port/platform/espressif/src/afr"
 )
 
 target_link_libraries(
